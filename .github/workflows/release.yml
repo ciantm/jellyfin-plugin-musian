@@ -64,8 +64,18 @@ jobs:
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
+          # Explicit token: the action otherwise has to discover it, and the
+          # "finalize release" call has been seen to fail with `HttpError:
+          # Server Error` / "Too many retries" right after the release is
+          # created — which then skips the manifest job below even though the
+          # release and its asset exist. Passing the token directly avoids the
+          # discovery step.
+          token: ${{ secrets.GITHUB_TOKEN }}
           tag_name: ${{ steps.version.outputs.tag }}
           name: Musian ${{ steps.version.outputs.version }}
+          # Never leave a half-finished release behind on a retry.
+          draft: false
+          make_latest: true
           body: |
             ## Musian ${{ steps.version.outputs.version }}
 
