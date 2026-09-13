@@ -250,7 +250,7 @@ body { background:#111; color:#fff; font-family:sans-serif; min-height:100vh; ov
 
   <div id="jmTrackCount" style="display:none;margin-top:8px;font-size:0.78em;color:#555;text-align:center;"></div>
   <a href="#" onclick="if(window.Capacitor){try{localStorage.removeItem('jm_auth');}catch(e){}if(window.NativeMedia&&window.NativeMedia.clearCredentials){try{window.NativeMedia.clearCredentials();}catch(e){}}window.location.href='index.html';}else{history.back();}return false;" style="margin-top:32px;color:#555;font-size:0.8em;text-decoration:none;">&#8592; Back</a>
-  <div id="jmVersionLine" style="margin-top:8px;font-size:0.65em;color:#555;text-align:center;">v3.1.92.0</div>
+  <div id="jmVersionLine" style="margin-top:8px;font-size:0.65em;color:#555;text-align:center;">v3.1.93.0</div>
   <button id="jmPremiumBadge" style="display:none;margin:10px auto 0;background:rgba(255,215,0,0.12);color:#ffd700;border:1px solid rgba(255,215,0,0.35);border-radius:16px;padding:6px 14px;font-size:0.72em;font-weight:700;letter-spacing:0.02em;cursor:pointer;">Get Premium</button>
 </div>
 
@@ -1385,13 +1385,13 @@ function jmPlayTrack(idx, gen) {
       more = filtered;
       if (_gen !== jmGeneration) return;
       if (more.length) {
+        // Cap the refill the way the mood/genre path already does (25 premium /
+        // 10 free). Plex ignores X-Plex-Container-Size on filtered /all queries
+        // and so hands back an unbounded list here; appending all of it was what
+        // blew the heap. Same cap for every backend keeps behaviour identical.
+        more = more.slice(0, jmIsPremium() ? 25 : 10);
         jmPlaylist = jmPlaylist.concat(more);
-        if (window.NativeMedia) {
-          more.forEach(function(t) {
-            var ta = (t.Artists && t.Artists[0]) || t.AlbumArtist || '';
-            window.NativeMedia.queueNextTrack(JM.streamUrl(t), t.Id, t.Name || '', ta);
-          });
-        }
+        jmNativeQueueTracks(more);
         // Freshly-appended tracks may fill an "Up next" that was empty when
         // this track started (e.g. a fresh single-song search) — refresh it.
         jmUpdateUpNext(idx);
@@ -1404,11 +1404,8 @@ function jmPlayTrack(idx, gen) {
     window._nativeStartIdx = idx;
     window.NativeMedia.playTrack(url, item.Id, item.Name || '', artist);
     jmShowMoodTransition(item);
-    for (var qi = idx + 1; qi < jmPlaylist.length; qi++) {
-      var nx = jmPlaylist[qi];
-      var na = (nx.Artists && nx.Artists[0]) || nx.AlbumArtist || '';
-      window.NativeMedia.queueNextTrack(JM.streamUrl(nx), nx.Id, nx.Name || '', na);
-    }
+    // One batched bridge call instead of one per track — see jmNativeQueueTracks.
+    jmNativeQueueTracks(jmPlaylist.slice(idx + 1));
     jmStartNativePoll();
   } else {
     jmAudio.pause();
@@ -1461,11 +1458,10 @@ function jmNativeUpdateUI(idx) {
       more = filtered;
       if (_gen !== jmGeneration) return;
       if (more.length) {
+        // Same cap as the other refill path — see the comment there.
+        more = more.slice(0, jmIsPremium() ? 25 : 10);
         jmPlaylist = jmPlaylist.concat(more);
-        more.forEach(function(t) {
-          var ta = (t.Artists && t.Artists[0]) || t.AlbumArtist || '';
-          window.NativeMedia.queueNextTrack(JM.streamUrl(t), t.Id, t.Name || '', ta);
-        });
+        jmNativeQueueTracks(more);
         // Freshly-appended tracks may fill an "Up next" that was empty when
         // this track started (e.g. a fresh single-song search) \u2014 refresh it.
         jmUpdateUpNext(idx);
@@ -1627,6 +1623,37 @@ function startPlayback(items) {
   jmShowPrompt(true);
 }
 
+// Appends tracks to the native ExoPlayer queue in a single bridge call.
+//
+// Every individual NativeMedia.queueNextTrack() makes ExoPlayer copy its whole
+// playlist and rebuild the timeline (PlaylistTimeline) — appending N tracks one
+// call at a time is O(N²). Plex returns an uncapped refill list (it ignores
+// X-Plex-Container-Size on filtered /all queries), which made that burst large
+// enough to exhaust the Android heap and kill the process mid-playback. Batching
+// through queueTracks() does one timeline rebuild instead.
+//
+// Falls back to the per-track call if the native side predates queueTracks, so
+// an older installed APK paired with a newer web bundle keeps working.
+function jmNativeQueueTracks(tracks) {
+  if (!window.NativeMedia || !tracks.length) return;
+  if (typeof window.NativeMedia.queueTracks !== 'function') {
+    tracks.forEach(function(t) {
+      var ta = (t.Artists && t.Artists[0]) || t.AlbumArtist || '';
+      window.NativeMedia.queueNextTrack(JM.streamUrl(t), t.Id, t.Name || '', ta);
+    });
+    return;
+  }
+  var urls = [], ids = [], titles = [], artists = [];
+  tracks.forEach(function(t) {
+    urls.push(JM.streamUrl(t));
+    ids.push(t.Id);
+    titles.push(t.Name || '');
+    artists.push((t.Artists && t.Artists[0]) || t.AlbumArtist || '');
+  });
+  window.NativeMedia.queueTracks(JSON.stringify(urls), JSON.stringify(ids),
+                                 JSON.stringify(titles), JSON.stringify(artists));
+}
+
 // Stage a new mood/genre selection as "up next" instead of interrupting what's playing.
 // Falls back to starting fresh if nothing is currently loaded.
 function jmQueueAhead(items) {
@@ -1643,10 +1670,7 @@ function jmQueueAhead(items) {
   jmUpdateUpNext(jmPlayIdx);
   if (window.NativeMedia) {
     window.NativeMedia.clearQueueAhead();
-    filtered.forEach(function(t) {
-      var ta = (t.Artists && t.Artists[0]) || t.AlbumArtist || '';
-      window.NativeMedia.queueNextTrack(JM.streamUrl(t), t.Id, t.Name || '', ta);
-    });
+    jmNativeQueueTracks(filtered);
   }
 }
 
@@ -2531,18 +2555,39 @@ function withResolvedGenres(item, cb) {
       return;
     }
     if (JM.type === 'subsonic') {
+      // Request a generous window and cap client-side, exactly as the Jellyfin
+      // branch does with Limit=60.
+      //
+      // Asking the server for songCount=6 returns the first 6 matches in the
+      // server's own order, and Subsonic's search3 matches across artist and
+      // album names too — so a query like "Black" came back as four title
+      // matches plus two songs that only matched via the artist "Black Pumas"
+      // (e.g. "Colors", "Confines"). Those pre-empted genuine title matches
+      // because jmRankAndCap had only the truncated list to work with and
+      // nothing better to promote.
+      //
+      // Over-fetching restores the same property Jellyfin gets for free: the
+      // ranking runs over all plausible matches, not an arbitrary slice.
       jmFetch(JM.server + '/rest/search3.view?query=' + encodeURIComponent(q) +
-        '&songCount=6&artistCount=3&albumCount=3' + JM.subAuth())
+        '&songCount=60&artistCount=20&albumCount=20' + JM.subAuth())
         .then(function(r){return r.json();})
         .then(function(d){
           var sr = ((d['subsonic-response']||{}).searchResult3)||{};
+          // Rank on the title, but keep songs whose title does not contain the
+          // query at all out of the track list. Subsonic matches "Black" to the
+          // artist Black Pumas; a user searching a word wants songs with that
+          // word, not every song by an artist who happens to have it. Rank 2 is
+          // exactly "matched, but not by title".
+          var titleOnly = (sr.song||[]).filter(function(s){
+            return (s.title||'').toLowerCase().indexOf(q.toLowerCase()) !== -1;
+          });
           var artists = jmRankAndCap((sr.artist||[]).slice(), q, function(a){ return a.name; }, 3).map(function(a){
             return {_kind:'artist', Id:a.id, Name:a.name, _artistName:null};
           });
           var albums = jmRankAndCap((sr.album||[]).slice(), q, function(a){ return a.name; }, 3).map(function(a){
             return {_kind:'album', Id:a.id, Name:a.name, _artistName:a.artist||''};
           });
-          var songs = normalizeTracks(jmRankAndCap((sr.song||[]).slice(), q, function(s){ return s.title; }, 6));
+          var songs = normalizeTracks(jmRankAndCap(titleOnly, q, function(s){ return s.title; }, 6));
           renderSuggestions(songs.concat(albums).concat(artists).concat(moods));
         })
         .catch(function(){});
