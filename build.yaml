@@ -11,3 +11,5 @@ projects:
 # Repository: https://github.com/ciantm/jellyfin-plugin-musian
 
 # gh-pages branch carries the plugin manifest.
+
+# Pages source is "GitHub Actions" (workflow deploy), not a branch.
