@@ -7,3 +7,5 @@ artifactDir: "artifacts"
 
 projects:
   - Jellyfin.Plugin.Musian/Jellyfin.Plugin.Musian.csproj
+
+# Repository: https://github.com/ciantm/jellyfin-plugin-musian
