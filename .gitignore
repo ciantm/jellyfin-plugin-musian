@@ -1,0 +1,20 @@
+## .NET / C# ##
+bin/
+obj/
+artifacts/
+*.user
+*.suo
+.vs/
+_ReSharper*/
+*.DotSettings.user
+
+## OS ##
+.DS_Store
+Thumbs.db
+
+## Editors ##
+.idea/
+.vscode/
+
+## Build output ##
+build_output/

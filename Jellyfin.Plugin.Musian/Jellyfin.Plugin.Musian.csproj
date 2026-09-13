@@ -1,0 +1,39 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <AssemblyName>Jellyfin.Plugin.Musian</AssemblyName>
+    <RootNamespace>Jellyfin.Plugin.Musian</RootNamespace>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    <Version>3.1.92.0</Version>
+    <AssemblyVersion>$(Version)</AssemblyVersion>
+    <FileVersion>$(Version)</FileVersion>
+    <Authors>ciantm</Authors>
+    <Product>Musian</Product>
+    <Description>Play music from your Jellyfin library based on mood selection.</Description>
+    <Copyright>MIT</Copyright>
+    <RepositoryUrl>https://github.com/ciantm/jellyfin-plugin-musian</RepositoryUrl>
+    <PackageProjectUrl>https://github.com/ciantm/jellyfin-plugin-musian</PackageProjectUrl>
+  </PropertyGroup>
+
+  <!-- Required for ControllerBase, ApiController etc. -->
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <!-- Jellyfin SDK — compile only, never bundled -->
+  <ItemGroup>
+    <PackageReference Include="Jellyfin.Model"      Version="10.9.0" PrivateAssets="all" />
+    <PackageReference Include="Jellyfin.Controller" Version="10.9.0" PrivateAssets="all" />
+  </ItemGroup>
+
+  <!-- Embedded resources -->
+  <ItemGroup>
+    <EmbeddedResource Include="Configuration\moodPicker.html" />
+    <EmbeddedResource Include="Configuration\app.html" />
+  </ItemGroup>
+
+</Project>
