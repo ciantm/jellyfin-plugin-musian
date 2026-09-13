@@ -250,7 +250,7 @@ body { background:#111; color:#fff; font-family:sans-serif; min-height:100vh; ov
 
   <div id="jmTrackCount" style="display:none;margin-top:8px;font-size:0.78em;color:#555;text-align:center;"></div>
   <a href="#" onclick="if(window.Capacitor){try{localStorage.removeItem('jm_auth');}catch(e){}if(window.NativeMedia&&window.NativeMedia.clearCredentials){try{window.NativeMedia.clearCredentials();}catch(e){}}window.location.href='index.html';}else{history.back();}return false;" style="margin-top:32px;color:#555;font-size:0.8em;text-decoration:none;">&#8592; Back</a>
-  <div id="jmVersionLine" style="margin-top:8px;font-size:0.65em;color:#555;text-align:center;">v3.1.93.0</div>
+  <div id="jmVersionLine" style="margin-top:8px;font-size:0.65em;color:#555;text-align:center;">v3.1.94.0</div>
   <button id="jmPremiumBadge" style="display:none;margin:10px auto 0;background:rgba(255,215,0,0.12);color:#ffd700;border:1px solid rgba(255,215,0,0.35);border-radius:16px;padding:6px 14px;font-size:0.72em;font-weight:700;letter-spacing:0.02em;cursor:pointer;">Get Premium</button>
 </div>
 
@@ -460,8 +460,22 @@ var JM = {
       '&api_key=' + this.token;
   },
   artUrl: function(item) {
-    if (this.type !== 'jellyfin') return null;
+    if (!item) return null;
     var id = typeof item === 'object' ? item.Id : item;
+    if (this.type === 'plex') {
+      // Plex gives a relative thumbnail path on the track; falls back to the
+      // metadata endpoint if the search response omitted `thumb`. The token
+      // goes in the query string because that is Plex's own documented scheme.
+      var p = (typeof item === 'object' && item._artPath) || ('/library/metadata/' + id + '/thumb');
+      return this.server + p + '?X-Plex-Token=' + this.token;
+    }
+    if (this.type === 'subsonic') {
+      var artId = (typeof item === 'object' && item._artId) || '';
+      if (!artId) return null;
+      return this.server + '/rest/getCoverArt.view?id=' + encodeURIComponent(artId) +
+        jmSubAuthParams(this.username, this.password);
+    }
+    if (this.type !== 'jellyfin') return null;
     // No `?api_key=`: this URL is fetched with an Authorization header by
     // jmAuthedImageUrl, which also rewrites it back to the legacy form if the
     // server turns out to be an older Jellyfin that needs it.
@@ -478,12 +492,22 @@ var JM = {
 //
 // Results are cached by URL so scrolling a grid of 50 thumbnails fetches each
 // image once, and so repeated track changes don't re-download the same art.
-// Only used for Jellyfin (`?api_key=`); Plex/Subsonic art keeps its own scheme.
+// Each backend authenticates differently:
+//   Jellyfin — Authorization header (blob fetch), falling back to ?api_key=
+//   Plex     — ?X-Plex-Token= in the query string, which is Plex's own scheme
+//   Subsonic — salted token params, never the password (see jmSubAuthParams)
+// Jellyfin needs the blob indirection because its images require a request
+// header an <img src> cannot send. Plex and Subsonic carry their credentials in
+// the URL itself, so those go straight to the element.
 var jmArtCache = {};        // url -> objectURL (may be null while in flight)
 var jmArtPending = {};      // url -> [callback, ...]
 var jmArtSetToken = 0;      // guards against slow art resolving after a track change
 function jmAuthedImageUrl(url, cb) {
-  if (!url || JM.type !== 'jellyfin' || !JM.token) { cb(url || null); return; }
+  if (!url) { cb(null); return; }
+  // Plex and Subsonic art URLs are already fully authenticated by jmArtUrl, so
+  // they can go straight to the <img>. Only Jellyfin needs a blob fetch, since
+  // its images require a request header an <img> cannot send.
+  if (JM.type !== 'jellyfin' || !JM.token) { cb(url); return; }
   if (Object.prototype.hasOwnProperty.call(jmArtCache, url)) { cb(jmArtCache[url]); return; }
   if (jmArtPending[url]) { jmArtPending[url].push(cb); return; }
   jmArtPending[url] = [cb];
@@ -558,21 +582,55 @@ function normalizeTracks(items) {
         Artists: t.grandparentTitle ? [t.grandparentTitle] : [],
         AlbumArtist: t.grandparentTitle || '',
         Genres: (t.Genre || []).map(function(g) { return g.tag; }),
-        Moods:  (t.Mood  || []).map(function(m) { return m.tag; }),
+        // Moods go into Tags as "Mood:<name>", which is the shape mood matching
+        // actually reads (see deriveTagMood) — the structured Moods field is not
+        // consulted, so populating only that would leave Plex moods invisible.
+        Tags: (t.Mood || []).map(function(m) { return 'Mood:' + m.tag; }),
         _partKey: t.Media && t.Media[0] && t.Media[0].Part && t.Media[0].Part[0]
-                  ? t.Media[0].Part[0].key : ''
+                  ? t.Media[0].Part[0].key : '',
+        // Album art path. Plex gives a relative `thumb` (e.g. /library/metadata/123/thumb/456)
+        // which needs the server prefix and the Plex token appended — see JM.artUrl.
+        _artPath: t.thumb || ''
       };
     });
   }
   if (JM.type === 'subsonic') {
     return items.map(function(t) {
+      // Subsonic/Navidrome expose mood-like tags that Jellyfin and Plex also
+      // carry, so the mood path works the same on all three. Which ones are
+      // populated is a property of the server's library/analysis, not of
+      // Musian — Navidrome computes e.g. Happy/Sad/Relaxed/Aggressive and
+      // returns them here, another server may return none. When there are no
+      // moods the genre-zone path takes over, exactly as it does for a
+      // Jellyfin or Plex track that has no Mood tag.
+      //
+      // Shape matters: mood matching reads item.Tags looking for "Mood:<name>"
+      // entries (see deriveTagMood), not the structured Moods field — that field
+      // is left empty by most taggers, which is why it is not what we match on.
+      // So re-expose the server's mood list in that same Mood: form rather than
+      // inventing a second convention for Subsonic.
+      var tags = [];
+      if (t.moods && t.moods.length) {
+        tags = t.moods.map(function(m) { return 'Mood:' + m; });
+      }
+      // `genres` is the multi-value list (Country + Outlaw Country + Traditional
+      // Country); `genre` is the single primary string. Prefer the richer one,
+      // and fall back to `genre` for servers that only send the simple field.
+      var genres = [];
+      if (t.genres && t.genres.length) {
+        genres = t.genres.map(function(g) { return (g && g.name) || ''; }).filter(Boolean);
+      }
+      if (!genres.length && t.genre) genres = [t.genre];
       return {
         Id: String(t.id),
         Name: t.title || '',
         Artists: t.artist ? [t.artist] : [],
         AlbumArtist: t.artist || '',
-        Genres: t.genre ? [t.genre] : [],
-        Moods: []
+        Genres: genres,
+        Tags: tags,
+        Album: t.album || '',
+        // Album art id — Subsonic serves art via /rest/getCoverArt.view?id=<coverArt>.
+        _artId: t.coverArt || ''
       };
     });
   }
@@ -1144,10 +1202,11 @@ function jmUpdateMediaSession(item) {
     album:  item.Album || '',
     artwork: []
   });
-  // Artwork is resolved asynchronously (authenticated blob fetch), so attach it
-  // once ready. blob: URLs are absolute, which is what MediaMetadata requires.
-  if (JM.type === 'jellyfin' && JM.token) {
-    var artUrl = JM.server + '/Items/' + item.Id + '/Images/Primary?maxHeight=256&quality=90';
+  // Artwork is resolved asynchronously (Jellyfin: authenticated blob fetch), so
+  // attach it once ready. blob: URLs are absolute, which is what MediaMetadata
+  // requires; Plex/Subsonic hand back a fully-qualified URL instead.
+  var artUrl = JM.artUrl(item);
+  if (artUrl) {
     var md = navigator.mediaSession.metadata;
     jmAuthedImageUrl(artUrl, function(resolved) {
       if (!resolved || navigator.mediaSession.metadata !== md) return;
@@ -1656,7 +1715,15 @@ function jmNativeQueueTracks(tracks) {
 
 // Stage a new mood/genre selection as "up next" instead of interrupting what's playing.
 // Falls back to starting fresh if nothing is currently loaded.
-function jmQueueAhead(items) {
+//
+// `opt.keepAll` skips the 25-track cap. Only the album-scope path uses it: "play
+// this album in track order" is meant to queue the whole album, so capping would
+// silently truncate any album longer than 25 tracks. Everything else — mood
+// selections, search, artist shuffle, "Play Similar" — caps, because those are
+// samples rather than a defined sequence. The cap also bounds how much a single
+// selection hands to ExoPlayer: Plex ignores X-Plex-Container-Size on filtered
+// /all queries and once returned ~15,000 items, which OOM'd the Android app.
+function jmQueueAhead(items, opt) {
   if (!items.length) return;
   if (!jmPlaylist.length) { startPlayback(items); return; }
   // Bump generation so a still-in-flight fetch from whatever selection was
@@ -1666,6 +1733,10 @@ function jmQueueAhead(items) {
   jmFetching = false;
   var filtered = items.filter(function(t) { return jmPlayedIds.indexOf(t.Id) === -1; });
   if (!filtered.length) filtered = items;
+  // 25 matches the mood path. There is no 10-track case here: "Play Similar"
+  // is premium-only (it returns early for non-premium above), so every caller
+  // that reaches this point is entitled to the full 25.
+  if (!(opt && opt.keepAll)) filtered = filtered.slice(0, 25);
   jmPlaylist = jmPlaylist.slice(0, jmPlayIdx + 1).concat(filtered);
   jmUpdateUpNext(jmPlayIdx);
   if (window.NativeMedia) {
@@ -2690,9 +2761,11 @@ function withResolvedGenres(item, cb) {
       function inZone(t) { return zone.idx === -1 || passesGenreZone(t.Genres, zGenres, zLo, zHi); }
 
       if (kind === 'album') {
-        // Play in track order; when exhausted, transition to full-library mood search
+        // Play in track order; when exhausted, transition to full-library mood search.
+        // keepAll: an album is a defined sequence, so queue all of it rather than
+        // the usual 25-track sample.
         jmRefetchFn = function() { return transitionToLibraryWideMoodSearch(jmScopePool); };
-        jmQueueAhead(tracks);
+        jmQueueAhead(tracks, {keepAll: true});
       } else {
         // Artist: filter pool to tracks whose own dominant genre matches the
         // artist's major zone, shuffle

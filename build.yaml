@@ -1,5 +1,5 @@
 ---
-version: "3.1.93.0"
+version: "3.1.94.0"
 
 dotnetVersion: "net8.0"
 
@@ -7,9 +7,3 @@ artifactDir: "artifacts"
 
 projects:
   - Jellyfin.Plugin.Musian/Jellyfin.Plugin.Musian.csproj
-
-# Repository: https://github.com/ciantm/jellyfin-plugin-musian
-
-# gh-pages branch carries the plugin manifest.
-
-# Pages source is "GitHub Actions" (workflow deploy), not a branch.
