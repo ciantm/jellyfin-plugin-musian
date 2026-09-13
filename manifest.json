@@ -1,0 +1,12 @@
+[
+  {
+    "category": "Music",
+    "guid": "6c8a80b7-3e2f-4d5a-9b1c-f7e8d9a0b2c3",
+    "name": "Musian",
+    "description": "Play music from your Jellyfin library by selecting a mood on a visual emotion wheel (Valence–Arousal model).",
+    "overview": "Click anywhere on the colour wheel to match music to how you feel. The wheel maps High/Low energy on the vertical axis and Positive/Negative mood on the horizontal axis.",
+    "owner": "ciantm",
+    "imageUrl": "https://raw.githubusercontent.com/ciantm/jellyfin-plugin-musian/main/assets/logo.png",
+    "versions": []
+  }
+]
