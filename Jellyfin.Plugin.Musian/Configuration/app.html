@@ -250,7 +250,7 @@ body { background:#111; color:#fff; font-family:sans-serif; min-height:100vh; ov
 
   <div id="jmTrackCount" style="display:none;margin-top:8px;font-size:0.78em;color:#555;text-align:center;"></div>
   <a href="#" onclick="if(window.Capacitor){try{localStorage.removeItem('jm_auth');}catch(e){}if(window.NativeMedia&&window.NativeMedia.clearCredentials){try{window.NativeMedia.clearCredentials();}catch(e){}}window.location.href='index.html';}else{history.back();}return false;" style="margin-top:32px;color:#555;font-size:0.8em;text-decoration:none;">&#8592; Back</a>
-  <div id="jmVersionLine" style="margin-top:8px;font-size:0.65em;color:#555;text-align:center;">v3.1.94.0</div>
+  <div id="jmVersionLine" style="margin-top:8px;font-size:0.65em;color:#555;text-align:center;">v3.1.95.0</div>
   <button id="jmPremiumBadge" style="display:none;margin:10px auto 0;background:rgba(255,215,0,0.12);color:#ffd700;border:1px solid rgba(255,215,0,0.35);border-radius:16px;padding:6px 14px;font-size:0.72em;font-weight:700;letter-spacing:0.02em;cursor:pointer;">Get Premium</button>
 </div>
 
@@ -537,8 +537,24 @@ function jmAuthedImageUrl(url, cb) {
     });
 }
 JM.init();
-if (window.NativeMedia && JM.token && JM.userId && JM.type !== 'plex' && JM.type !== 'subsonic') {
-  NativeMedia.saveCredentials(JM.server, JM.userId, JM.token);
+// Hand the native side everything background refill needs for whichever backend
+// is in use. Refill runs entirely in Java while the WebView is throttled, so it
+// cannot call back into this page for credentials:
+//   jellyfin — user id + token (auth is by header)
+//   plex     — token + library section id (auth is by query string)
+//   subsonic — username + password, because its token is salted per request and
+//              must be derived at fetch time
+if (window.NativeMedia && JM.server) {
+  if (typeof NativeMedia.saveCredentialsFull === 'function') {
+    NativeMedia.saveCredentialsFull(
+      JM.type || 'jellyfin', JM.server,
+      JM.userId || '', JM.token || '',
+      String(JM.sectionId == null ? '' : JM.sectionId),
+      JM.username || '', JM.password || '');
+  } else if (JM.type === 'jellyfin' && JM.token && JM.userId) {
+    // Older APK with the three-argument bridge: Jellyfin still works.
+    NativeMedia.saveCredentials(JM.server, JM.userId, JM.token);
+  }
 }
 (function() {
   var el = document.getElementById('jmVersionLine');
@@ -590,7 +606,10 @@ function normalizeTracks(items) {
                   ? t.Media[0].Part[0].key : '',
         // Album art path. Plex gives a relative `thumb` (e.g. /library/metadata/123/thumb/456)
         // which needs the server prefix and the Plex token appended — see JM.artUrl.
-        _artPath: t.thumb || ''
+        _artPath: t.thumb || '',
+        // Album id, so withResolvedGenres can fall back to the album when a
+        // track carries no genres of its own (Plex keeps them on the album).
+        _albumId: t.parentRatingKey || ''
       };
     });
   }
@@ -630,7 +649,10 @@ function normalizeTracks(items) {
         Tags: tags,
         Album: t.album || '',
         // Album art id — Subsonic serves art via /rest/getCoverArt.view?id=<coverArt>.
-        _artId: t.coverArt || ''
+        _artId: t.coverArt || '',
+        // Album id, so withResolvedGenres can fall back to the album when a
+        // track carries no genres of its own.
+        _albumId: t.albumId || ''
       };
     });
   }
@@ -1096,7 +1118,9 @@ function jmStartNativePoll() {
 // final; safe to keep calling since it no-ops once jmPlaylist is populated.
 function jmTryNativeRehydrate(attemptsLeft) {
   if (jmPlaylist.length || !window.NativeMedia || !window.NativeMedia.getQueueSnapshot) return;
-  if (JM.type !== 'jellyfin') return;
+  // Not gated on JM.type: native playback now runs on all three backends, so a
+  // queue can exist natively on any of them. The snapshot read below is
+  // backend-agnostic — it only carries id/title/artist.
   if (attemptsLeft === undefined) attemptsLeft = 15; // ~3s total at 200ms apart
   try {
     var snap = JSON.parse(window.NativeMedia.getQueueSnapshot() || '{}');
@@ -1152,7 +1176,10 @@ document.addEventListener('visibilitychange', function() {
 // locks or the app backgrounds — native has no such limitation). JS still owns
 // deciding *what* to search for; native just replays the same kind of fetch.
 function jmPushNativeSpec(tags, genreConstraint, fallbackGenres) {
-  if (window.NativeMedia && jmIsPremium() && JM.type === 'jellyfin' && window.NativeMedia.setRefetchSpec) {
+  // Not gated on JM.type: native refill understands all three backends now
+  // (see MusicService.Backend). It no-ops on its own if the saved credentials
+  // are not usable for the current backend.
+  if (window.NativeMedia && jmIsPremium() && window.NativeMedia.setRefetchSpec) {
     try {
       window.NativeMedia.setRefetchSpec(
         JSON.stringify(tags || []),
@@ -1432,8 +1459,11 @@ function jmPlayTrack(idx, gen) {
   var item = jmPlaylist[idx];
   jmPlayedIds.push(item.Id);
   if (jmPlayedIds.length > 500) jmPlayedIds = jmPlayedIds.slice(-500);
-  // Prefetch next batch when 2 or fewer tracks remain (including current)
-  if (jmRefetchFn && !jmFetching && jmPlaylist.length - idx <= 2) {
+  // Prefetch next batch when 2 or fewer tracks remain (including current).
+  // Premium only: a free queue is deliberately finite — 10 tracks and then it
+  // stops. Without this gate the refill appended another 10 every time it ran,
+  // so free playback continued indefinitely.
+  if (jmIsPremium() && jmRefetchFn && !jmFetching && jmPlaylist.length - idx <= 2) {
     jmFetching = true;
     var _gen = gen;
     jmRefetchFn().then(function(more) {
@@ -1506,7 +1536,9 @@ function jmNativeUpdateUI(idx) {
   setStatus('Playing \u266a');
   jmUpdatePersistentBar(item);
   jmShowMoodTransition(item);
-  if (window.NativeMedia && jmRefetchFn && !jmFetching && jmPlaylist.length - idx <= 2) {
+  // Premium only — see the matching note on the other refill site. A free
+  // queue is 10 tracks and then it stops, by design.
+  if (window.NativeMedia && jmIsPremium() && jmRefetchFn && !jmFetching && jmPlaylist.length - idx <= 2) {
     jmFetching = true;
     var _gen = jmGeneration;
     jmRefetchFn().then(function(more) {
@@ -2104,7 +2136,43 @@ function fetchTracksByTags(tags, genres, lo, hi) {
       return tracks;
     });
   }
-  if (JM.type === 'subsonic') return Promise.resolve([]);
+  if (JM.type === 'subsonic') {
+    // Subsonic/Navidrome has no server-side mood query: `search3` is text-only
+    // and `getSongsByGenre` only knows genres, so a mood name returns nothing.
+    // Moods do come back on each song's `moods` field, so fetch a large random
+    // pool and filter it here with the same deriveTagMood the wheel already
+    // uses — that keeps Subsonic's notion of a mood identical to Jellyfin's and
+    // Plex's rather than inventing a second one.
+    //
+    // The pool is capped because this runs on every mood tap: 4 x 500 covers an
+    // ~1,900-track library at ~82% mood coverage (verified against Navidrome).
+    var wanted = {};
+    tags.forEach(function(t) { wanted[String(t).toLowerCase()] = true; });
+    var pools = [];
+    for (var pi = 0; pi < 4; pi++) {
+      pools.push(
+        jmFetch(JM.server + '/rest/getRandomSongs.view?size=500' + JM.subAuth())
+          .then(function(r) { return r.json(); })
+          .then(function(d) { return ((d['subsonic-response'] || {}).randomSongs || {}).song || []; })
+          .catch(function() { return []; })
+      );
+    }
+    return Promise.all(pools).then(function(results) {
+      var seen = {}, merged = [];
+      results.forEach(function(songs) {
+        songs.forEach(function(s) { if (!seen[s.id]) { seen[s.id] = true; merged.push(s); } });
+      });
+      var tracks = normalizeTracks(merged).filter(function(t) {
+        var m = deriveTagMood(t);
+        return m && wanted[m.name.toLowerCase()];
+      });
+      // Same genre-zone gate the other backends apply, when one is locked in.
+      if (genres && genres.length) {
+        tracks = tracks.filter(function(t) { return passesGenreZone(t.Genres, genres, lo, hi); });
+      }
+      return tracks;
+    });
+  }
   if (!JM.token || !JM.userId) return Promise.resolve([]);
   var expanded = [];
   tags.forEach(function(t) {
@@ -2498,19 +2566,50 @@ function deriveSearchOriginFromTrack(item, g) {
   return refetchFn;
 }
 
-// Resolves a track's genres, fetching from its album first if the track
-// itself carries none (Jellyfin often puts genres on the album, not the
-// track) — shared by selectSong and the "Play Similar" control.
+// Resolves a track's genres, falling back to its album when the track itself
+// carries none. All three backends keep genres on the album as well as the
+// track, and which one a given file populates is a property of the tagger, not
+// of the server — so the fallback is applied per backend rather than assuming
+// Jellyfin is the only one that needs it. Without it a track with no genres
+// lands in the wrong mood zone (or none) on Plex and Subsonic too.
+// Shared by selectSong and the "Play Similar" control.
 function withResolvedGenres(item, cb) {
   var genres = item.Genres || [];
-  if (!genres.length && JM.type === 'jellyfin' && item.AlbumId && JM.token && JM.userId) {
-    jmFetch(JM.server + '/Users/' + JM.userId + '/Items/' + item.AlbumId + '?Fields=Genres', {headers: JM.headers()})
-      .then(function(r) { return r.json(); })
-      .then(function(d) { cb(d.Genres || []); })
-      .catch(function() { cb([]); });
-  } else {
-    cb(genres);
+  // Jellyfin items are passed through normalizeTracks untouched and keep their
+  // native `AlbumId`; Plex and Subsonic get `_albumId` from normalizeTracks.
+  var albumId = item._albumId || item.AlbumId;
+  if (genres.length || !albumId) { cb(genres); return; }
+
+  var url = null;
+  if (JM.type === 'jellyfin' && JM.token && JM.userId) {
+    url = JM.server + '/Users/' + JM.userId + '/Items/' + albumId + '?Fields=Genres';
+  } else if (JM.type === 'plex' && JM.token) {
+    // Plex returns the album's Genre list on the metadata endpoint.
+    url = JM.server + '/library/metadata/' + albumId + '?X-Plex-Token=' + JM.token;
+  } else if (JM.type === 'subsonic') {
+    url = JM.server + '/rest/getAlbum.view?id=' + encodeURIComponent(albumId) + JM.subAuth();
   }
+  if (!url) { cb(genres); return; }
+
+  jmFetch(url, {headers: JM.headers()})
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+      if (JM.type === 'plex') {
+        var md = (d.MediaContainer && d.MediaContainer.Metadata) || [];
+        var g = (md[0] && md[0].Genre) || [];
+        cb(g.map(function(x) { return x.tag; }).filter(Boolean));
+        return;
+      }
+      if (JM.type === 'subsonic') {
+        var alb = (d['subsonic-response'] || {}).album || {};
+        var names = (alb.genres || []).map(function(x) { return (x && x.name) || ''; }).filter(Boolean);
+        if (!names.length && alb.genre) names = [alb.genre];
+        cb(names);
+        return;
+      }
+      cb(d.Genres || []);
+    })
+    .catch(function() { cb([]); });
 }
 
 (function() {
