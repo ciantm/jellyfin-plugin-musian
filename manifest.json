@@ -9,6 +9,14 @@
     "imageUrl": "https://raw.githubusercontent.com/ciantm/jellyfin-plugin-musian/main/assets/logo.png",
     "versions": [
       {
+        "version": "3.2.1",
+        "changelog": "Release 3.2.1",
+        "targetAbi": "10.8.0.0",
+        "sourceUrl": "https://github.com/ciantm/jellyfin-plugin-musian/releases/download/v3.2.1/Jellyfin.Plugin.Musian_3.2.1.zip",
+        "checksum": "a3c7a9ebe7af55d6c814d8cd38fbfc35",
+        "timestamp": "2026-09-15T14:12:03Z"
+      },
+      {
         "version": "3.2.0",
         "changelog": "Release 3.2.0",
         "targetAbi": "10.8.0.0",
