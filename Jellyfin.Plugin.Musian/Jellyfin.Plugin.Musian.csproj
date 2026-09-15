@@ -8,13 +8,14 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>disable</ImplicitUsings>
     <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
-    <Version>3.2.0</Version>
+    <Version>3.2.1</Version>
     <AssemblyVersion>$(Version)</AssemblyVersion>
     <FileVersion>$(Version)</FileVersion>
-    <Authors>ciantm</Authors>
+    <Authors>Cian T Murphy</Authors>
+    <Company>CTM Capital SAS</Company>
     <Product>Musian</Product>
     <Description>Play music from your Jellyfin library based on mood selection.</Description>
-    <Copyright>MIT</Copyright>
+    <Copyright>Copyright (c) CTM Capital SAS</Copyright>
     <RepositoryUrl>https://github.com/ciantm/jellyfin-plugin-musian</RepositoryUrl>
     <PackageProjectUrl>https://github.com/ciantm/jellyfin-plugin-musian</PackageProjectUrl>
   </PropertyGroup>
