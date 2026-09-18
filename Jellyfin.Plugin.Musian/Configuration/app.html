@@ -155,7 +155,7 @@ body { background:#111; color:#fff; font-family:sans-serif; min-height:100vh; ov
   </div>
 </div>
 <div id="jmApp">
-  <h2 style="font-size:1.92em;font-weight:300;margin:0 0 32px;text-align:center;"><span style="font-family:inherit;font-size:1.15em;font-weight:400;letter-spacing:0;color:rgba(255,255,255,0.88);">Musian</span></h2>
+  <h2 style="font-size:1.92em;font-weight:300;margin:0 0 32px;text-align:center;"><span style="font-family:inherit;font-size:1.15em;font-weight:300;letter-spacing:0.34em;color:rgba(255,255,255,0.88);">musian</span></h2>
 
   <div id="jmWheelWrap" style="position:relative;width:min(80vw,420px);height:min(80vw,420px);margin:0 auto 8px;">
     <svg id="jmSvgWheel" viewBox="0 0 400 400" width="100%" height="100%"
@@ -258,7 +258,7 @@ body { background:#111; color:#fff; font-family:sans-serif; min-height:100vh; ov
 
   <div id="jmTrackCount" style="display:none;margin-top:8px;font-size:0.78em;color:#555;text-align:center;"></div>
   <a href="#" onclick="if(window.Capacitor){try{localStorage.removeItem('jm_auth');}catch(e){}if(window.NativeMedia&&window.NativeMedia.clearCredentials){try{window.NativeMedia.clearCredentials();}catch(e){}}window.location.href='index.html';}else{history.back();}return false;" style="margin-top:32px;color:#555;font-size:0.8em;text-decoration:none;">&#8592; Back</a>
-  <div id="jmVersionLine" style="margin-top:8px;font-size:0.65em;color:#555;text-align:center;">v3.2.3</div>
+  <div id="jmVersionLine" style="margin-top:8px;font-size:0.65em;color:#555;text-align:center;">v3.2.4</div>
   <button id="jmPremiumBadge" style="display:none;margin:10px auto 0;background:rgba(255,215,0,0.12);color:#ffd700;border:1px solid rgba(255,215,0,0.35);border-radius:16px;padding:6px 14px;font-size:0.72em;font-weight:700;letter-spacing:0.02em;cursor:pointer;">Get Premium</button>
 </div>
 
@@ -936,11 +936,24 @@ var GENRES = [
 // out on their own after a short hold — see jmLabelDismissTimer below.
 var jmLabelDismissTimer = null; // pending self-dismiss timeout for the mood words
 var jmHintTimer         = null; // pending "Tap <logo>" centre-hint timeout
+var jmHintDelayTimer    = null; // pending 1.2s delay before that hint appears
+
+// How long the "Tap <logo> for similar" centre hint stays up. It has to survive
+// long enough for someone to read it, look DOWN at the Play Similar button at
+// the bottom of the page, and connect the two — 3s was too short for that, the
+// hint was gone before the eye travelled. Keep this in step with the hint's
+// 0.4s fade in jmShowPrompt() if the wording changes.
+var JM_SIMILAR_HINT_MS = 10000;
 
 var jmGenreFilter  = null; // null = no genre filter active
 var jmGenreZoneIdx = null; // GENRES index the dot pins to while a genre is chosen; null = per-track dot
 var jmGenreZoneLo  = null; // widened-window bounds paired with jmGenreFilter (hi > lo = multi-zone window)
 var jmGenreZoneHi  = null; // null/null or lo === hi = single zone or no filter, both use permissive tag-overlap
+// True only when the USER tapped the genre bar. Choosing an artist/album also
+// writes jmGenreFilter (from that artist's dominant zone), but that is inferred,
+// not chosen. A mood tap must keep a tapped genre and discard an inferred one,
+// and those two are otherwise indistinguishable once written.
+var jmGenrePinned  = false;
 var jmMoodTags   = null; // tags from last mood tap, for genre re-search
 var jmMoodLabels = [];   // persistent label elements on the disc
 
@@ -985,6 +998,7 @@ var jmMoodLabels = [];   // persistent label elements on the disc
       jmGenreZoneIdx = null;
       jmGenreZoneLo = null;
       jmGenreZoneHi = null;
+      jmGenrePinned = false;
       try { localStorage.removeItem('jmLastGenre'); } catch(e) {}
       highlight.style.display = 'none';
       [labelsTopEl, labelsEl].forEach(function(row) {
@@ -1035,6 +1049,8 @@ var jmMoodLabels = [];   // persistent label elements on the disc
     jmGenreZoneIdx = Math.round((lo + hi) / 2);
     jmGenreZoneLo = lo;
     jmGenreZoneHi = hi;
+    // A deliberate bar tap — this is the one genre choice a mood tap must keep.
+    jmGenrePinned = true;
     if (jmIsPremium()) try { localStorage.setItem('jmLastGenre', JSON.stringify({lo:lo,hi:hi})); } catch(e) {}
 
     // Replay with new genre filter only if a mood was already selected
@@ -1240,6 +1256,13 @@ function jmShowPrompt(visible) {
     p.style.display = 'block';
     setTimeout(function(){ p.style.opacity = '1'; }, 10);
   } else {
+    // Hiding the prompt has to drop the hint flag too. The flag means "the
+    // \"Tap <logo>\" hint is on screen and owns the centre"; once the prompt is
+    // hidden that is no longer true. Leaving it set made the guard above refuse
+    // every later jmShowPrompt(true) — so "Double tap to clear" never came back
+    // until the (now 10s) hint timeout happened to fire. That is the reported
+    // "double tap is missing" state: the flag was stuck, not the double tap.
+    if (jmHintTimer) { clearTimeout(jmHintTimer); jmHintTimer = null; }
     p.style.opacity = '0';
     setTimeout(function(){ p.style.display = 'none'; }, 400);
   }
@@ -1298,7 +1321,7 @@ function jmShowSimilarHint() {
     jmHintTimer = null;
     // Restore the normal centre prompt for this playback state.
     jmShowPrompt(true);
-  }, 3000);
+  }, JM_SIMILAR_HINT_MS);
 }
 
 function jmAdvance(gen) {
@@ -1616,7 +1639,15 @@ function jmShowMoodTransition(item) {
   // the track change itself. Only when something is actually playable — there
   // is no point inviting a tap on a track that isn't there.
   if (jmPlaylist && jmPlaylist.length > 0) {
-    setTimeout(jmShowSimilarHint, 1200);
+    // Tracked so a fast track change cancels the previous pending hint instead
+    // of stacking another one on top of it. Each stacked call re-armed
+    // jmHintTimer, so the centre stayed owned by the hint for 10s per pending
+    // copy — one of the ways the flag went stale.
+    if (jmHintDelayTimer) clearTimeout(jmHintDelayTimer);
+    jmHintDelayTimer = setTimeout(function() {
+      jmHintDelayTimer = null;
+      jmShowSimilarHint();
+    }, 1200);
   }
 }
 
@@ -1666,9 +1697,18 @@ function jmNativeUpdateUI(idx) {
   }
 }
 
+// Invoked natively (MainActivity's OnTransitionListener) when ExoPlayer moves to
+// the next media item — a push alternative to the 150ms poll. It used to be dead
+// code: the listener was a no-op and nothing called this, so the in-app UI relied
+// entirely on the poll, which Chromium throttles while the page is backgrounded.
+//
+// Implemented via jmNativeSyncIndex (not jmPlayIdx++) so it is idempotent: if the
+// poll already advanced the index, the push is a no-op, and vice versa. An
+// unconditional increment would double-advance whenever both fire.
 function jmNativeOnTransition() {
-  jmPlayIdx++;
-  jmNativeUpdateUI(jmPlayIdx);
+  if (!window.NativeMedia || !jmPlaylist.length || !window.NativeMedia.getNativeIndex) return;
+  var nativeIdx = window.NativeMedia.getNativeIndex();
+  if (nativeIdx >= 0) jmNativeSyncIndex(nativeIdx);
 }
 
 function jmNativeSyncIndex(nativeIdx) {
@@ -1746,6 +1786,7 @@ document.getElementById('jmStopBtn').addEventListener('click', function() {
   jmGenreZoneIdx = null;
   jmGenreZoneLo = null;
   jmGenreZoneHi = null;
+  jmGenrePinned = false;
   jmRefetchFn = null;
   // Actually stop native playback too — this button previously only reset the
   // JS-side UI, leaving native (ExoPlayer, the notification, its queue) still
@@ -1879,6 +1920,14 @@ function jmQueueAhead(items, opt) {
   if (window.NativeMedia) {
     window.NativeMedia.clearQueueAhead();
     jmNativeQueueTracks(filtered);
+    // The generation bump above invalidates the running poller: its interval
+    // captures _gen at start and self-cancels on the first tick where
+    // jmGeneration !== _gen. Nothing else restarts it on this path (playback is
+    // deliberately NOT interrupted — the new selection is queued behind the
+    // current track), so the in-app UI would stop tracking native entirely from
+    // here on. The notification/lock screen are driven natively and would keep
+    // updating, which is exactly the "UI frozen but lock screen fine" symptom.
+    jmStartNativePoll();
   }
 }
 
@@ -1924,6 +1973,35 @@ function handleInteraction(clientX, clientY) {
 // dotX/dotY (pixels within jmWheelWrap). Shared by wheel taps (handleInteraction),
 // the search box's mood-word suggestions (selectMoodByName), and mood restore.
 function selectMoodPoint(valence, arousal, dotX, dotY) {
+  // The mood is the primary selection mode: picking one abandons whatever scope
+  // was active before (a track search, an artist, an album). jmScopePool only
+  // used to be cleared by Stop, by the scope-exhausted handoff, and by a new
+  // song search — so tapping a mood with an artist selected silently searched
+  // only inside that artist instead of the library.
+  //
+  // The genre is the one thing that survives, and only when the user tapped the
+  // bar themselves: choosing an artist also writes jmGenreFilter (inferred from
+  // that artist's zone), and that must NOT outlive the mood tap.
+  jmScopePool = null;
+  jmScopeName = null;
+  document.getElementById('jmSearch').placeholder = 'Search song\u2026';
+  if (!jmGenrePinned) {
+    jmGenreFilter  = null;
+    jmGenreZoneIdx = null;
+    jmGenreZoneLo  = null;
+    jmGenreZoneHi  = null;
+    // Same clear sequence the Stop button uses, so the bar can't keep showing a
+    // highlight for a filter that is no longer applied.
+    var _hl = document.getElementById('jmGenreHighlight');
+    if (_hl) _hl.style.display = 'none';
+    showAnchorDotAtIndex(null);
+    showGenreDotAtIndex(null);
+    ['jmGenreLabelsTop', 'jmGenreLabels'].forEach(function(id) {
+      var row = document.getElementById(id);
+      if (row) row.querySelectorAll('span').forEach(function(s) { s.style.color = ''; s.style.fontWeight = ''; });
+    });
+  }
+
   if (jmIsPremium()) try { localStorage.setItem('jmLastMood', JSON.stringify({v:valence,a:arousal})); } catch(e) {}
   document.getElementById('jmResumeBtn').style.display = 'none';
 
@@ -2014,21 +2092,10 @@ function selectMoodPoint(valence, arousal, dotX, dotY) {
   jmMoodTags   = moodTags;
   jmMoodGenres = moodGenres;
 
-  if (jmScopePool) {
-    var filtered = filterPoolByGenres(jmScopePool, moodGenres);
-    if (filtered.length < 5) filtered = jmScopePool;
-    jmMoodGenres = moodGenres;
-    var _pool = filtered;
-    jmRefetchFn = function() {
-      var p = _pool.slice();
-      for (var i = p.length-1; i > 0; i--) { var j = Math.floor(Math.random()*(i+1)); var tmp=p[i];p[i]=p[j];p[j]=tmp; }
-      return Promise.resolve(p.slice(0, 25));
-    };
-    var sp = filtered.slice();
-    for (var i = sp.length-1; i > 0; i--) { var j = Math.floor(Math.random()*(i+1)); var tmp=sp[i];sp[i]=sp[j];sp[j]=tmp; }
-    jmQueueAhead(sp.slice(0, 25));
-    return;
-  }
+  // The artist/album scope branch that used to sit here was removed: it searched
+  // only inside the scope pool and returned, so a mood tap on an artist never
+  // reached the library-wide search below. selectMoodPoint now clears jmScopePool
+  // up front, which makes that branch unreachable by design.
 
   var searchGenres = jmGenreFilter !== null ? jmGenreFilter : moodGenres;
   var _gf = jmGenreFilter, _lo = jmGenreZoneLo, _hi = jmGenreZoneHi;
@@ -2603,6 +2670,8 @@ function transitionToLibraryWideMoodSearch(pool) {
   } else {
     jmGenreFilter = null; jmGenreZoneIdx = null; jmGenreZoneLo = null; jmGenreZoneHi = null;
   }
+  // Inferred from the pool's own genres, not tapped — must not outlive a mood tap.
+  jmGenrePinned = false;
   jmMoodTags = tags;
   jmMoodGenres = moodGenres;
   placeDotForMood(mood);
@@ -2714,6 +2783,8 @@ function deriveSearchOriginFromTrack(item, g) {
       document.getElementById(id).querySelectorAll('span').forEach(function(s) { s.style.color = ''; s.style.fontWeight = ''; });
     });
   }
+  // This rebases onto the searched track's own zone — inferred, never tapped.
+  jmGenrePinned = false;
   var searchGenres = jmGenreFilter !== null ? jmGenreFilter : _genres;
   var isElectronicZone = majorIdx !== -1 && GENRES[majorIdx].name === 'Dance & Electronic';
   jmMoodTags   = _tags;
@@ -3018,6 +3089,10 @@ function withResolvedGenres(item, cb) {
       } else {
         jmGenreFilter = null; jmGenreZoneIdx = null; jmGenreZoneLo = null; jmGenreZoneHi = null;
       }
+      // Choosing an artist/album infers a genre zone from its catalogue. That is
+      // not a genre choice by the user, so it must not survive a mood tap — this
+      // is the latch that made "artist + mood" keep the artist's genre.
+      jmGenrePinned = false;
       var zGenres = zone.genres, zLo = zone.lo, zHi = zone.hi;
       function inZone(t) { return zone.idx === -1 || passesGenreZone(t.Genres, zGenres, zLo, zHi); }
 
@@ -3124,6 +3199,9 @@ function withResolvedGenres(item, cb) {
     jmGenreZoneIdx = Math.round((lo + hi) / 2);
     jmGenreZoneLo = lo;
     jmGenreZoneHi = hi;
+    // Restored from a saved bar tap, so this IS a user choice and survives a
+    // mood tap — same standing as a fresh tap on the bar.
+    jmGenrePinned = true;
   } else {
     // No genre-bar tap was saved (the last selection was mood-only) — derive
     // the major zone the same way a single-song search would, treating the
@@ -3136,6 +3214,7 @@ function withResolvedGenres(item, cb) {
       jmGenreZoneLo = zone.lo;
       jmGenreZoneHi = zone.hi;
     }
+    jmGenrePinned = false;
   }
 
   var resumeBtn = document.getElementById('jmResumeBtn');
@@ -3185,6 +3264,7 @@ window.jmNativePrev = function() {
 // typeof-guarded lookup there always saw 'undefined' and silently no-op'd,
 // this whole time, regardless of the fix above.
 window.jmTryNativeRehydrate = jmTryNativeRehydrate;
+window.jmNativeOnTransition  = jmNativeOnTransition;
 
 })();
 </script>
