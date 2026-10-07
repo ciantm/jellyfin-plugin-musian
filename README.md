@@ -21,9 +21,9 @@ Available as a community plugin — install directly from Jellyfin's plugin cata
 
 ## 📱 Also available on Android
 
-The [Musian Android app](https://play.google.com/store/apps/details?id=com.musian.app) adds
-background playback, Android Auto and offline support. This Jellyfin plugin is free and
-fully featured — the app is an optional paid upgrade.
+A Musian Android app is in preparation — it will add background playback, Android Auto
+and offline support. This Jellyfin plugin is free and fully featured; the app will be an
+optional paid upgrade.
 
 ---
 

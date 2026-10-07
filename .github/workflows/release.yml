@@ -93,9 +93,9 @@ jobs:
 
             ---
 
-            📱 **Want Musian on your phone?** The Android app adds background playback,
-            Android Auto and offline support — [get it on Google Play](https://play.google.com/store/apps/details?id=com.musian.app)
-            (the app is a paid upgrade; this Jellyfin plugin is free and fully featured).
+            📱 **Want Musian on your phone?** A Musian Android app is in preparation, adding
+            background playback, Android Auto and offline support (the app will be a paid
+            upgrade; this Jellyfin plugin is free and fully featured).
           files: ${{ steps.version.outputs.artifact }}
           fail_on_unmatched_files: true
 
