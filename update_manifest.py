@@ -14,8 +14,23 @@ PLUGIN_GUID        = "6c8a80b7-3e2f-4d5a-9b1c-f7e8d9a0b2c3"
 REPO_OWNER         = "ciantm"
 REPO_NAME          = "jellyfin-plugin-musian"
 PLUGIN_NAME        = "Musian"
-TARGET_ABI         = "10.8.0.0"   # minimum Jellyfin version required
+TARGET_ABI         = "10.9.0.0"   # minimum Jellyfin version required
 MANIFEST_FILE      = "manifest.json"
+
+# Catalogue copy. These are written on every run, not just when bootstrapping a
+# fresh manifest: the live text lives in the gh-pages manifest.json, so editing
+# only the bootstrap block below would change nothing for existing repositories.
+DESCRIPTION = (
+    "Play music from your Jellyfin library by tapping a mood on a colour wheel. "
+    "Free and fully featured. The Android app adds Android Auto, background "
+    "playback and lock-screen controls: "
+    "https://play.google.com/store/apps/details?id=com.musian.app"
+)
+OVERVIEW = (
+    "Tap anywhere on the wheel: energy runs top to bottom, positivity left to "
+    "right, and Musian queues tracks from your library that match. No retagging, "
+    "no cloud account, no analytics. Tested on Jellyfin 12.4."
+)
 
 BASE_URL = f"https://github.com/{REPO_OWNER}/{REPO_NAME}/releases/download"
 
@@ -30,8 +45,8 @@ def load_manifest() -> list:
             "category":    "Music",
             "guid":        PLUGIN_GUID,
             "name":        PLUGIN_NAME,
-            "description": "Play music from your Jellyfin library by selecting a mood on a visual emotion wheel (Valence–Arousal model).",
-            "overview":    "Click anywhere on the colour wheel to match music to how you feel. The wheel maps High/Low energy on the vertical axis and Positive/Negative mood on the horizontal axis.",
+            "description": DESCRIPTION,
+            "overview":    OVERVIEW,
             "owner":       REPO_OWNER,
             "versions":    [],
             "imageUrl":    f"https://raw.githubusercontent.com/{REPO_OWNER}/{REPO_NAME}/main/assets/logo.png",
@@ -64,6 +79,10 @@ def main():
     manifest = load_manifest()
     plugin = manifest[0]
     plugin["name"] = PLUGIN_NAME
+    # Always refresh the catalogue copy, so the repository file is the source of
+    # truth rather than whatever the gh-pages branch happened to contain.
+    plugin["description"] = DESCRIPTION
+    plugin["overview"] = OVERVIEW
 
     # Remove any existing entry for this version (idempotent re-runs)
     plugin["versions"] = [

@@ -1,8 +1,8 @@
 # 🎵 Musian
 
-A Jellyfin plugin that plays music from your library based on mood selection, using a visual **Valence–Arousal emotion wheel**.
+A community Jellyfin plugin that turns your music library into a mood wheel: tap a feeling, get tracks.
 
-Available as a community plugin — install directly from Jellyfin's plugin catalogue.
+This is a third-party plugin. Add the repository URL below; it is not in the official Jellyfin catalogue.
 
 ---
 
@@ -19,11 +19,13 @@ Available as a community plugin — install directly from Jellyfin's plugin cata
 
 ---
 
-## 📱 Also available on Android
+## 📱 Also on Android
 
-A Musian Android app is in preparation — it will add background playback, Android Auto
-and offline support. This Jellyfin plugin is free and fully featured; the app will be an
-optional paid upgrade.
+The Musian Android app plays the same wheel from your phone, with background playback,
+lock-screen controls and Android Auto. The plugin stays free and fully featured; the app
+is an optional paid upgrade.
+
+[Get Musian on Google Play](https://play.google.com/store/apps/details?id=com.musian.app)
 
 ---
 
@@ -51,7 +53,7 @@ Clicking near edges blends genres from adjacent moods automatically.
 
 ## Requirements
 
-- Jellyfin **10.8** or later
+- Jellyfin **10.9** or later (tested on 12.4)
 - Audio tracks with **Genre** tags set in your library
 - .NET **8.0** SDK (only needed if building from source)
 

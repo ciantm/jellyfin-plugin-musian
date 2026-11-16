@@ -93,9 +93,8 @@ jobs:
 
             ---
 
-            📱 **Want Musian on your phone?** A Musian Android app is in preparation, adding
-            background playback, Android Auto and offline support (the app will be a paid
-            upgrade; this Jellyfin plugin is free and fully featured).
+            📱 **On your phone:** Musian for Android adds Android Auto, background playback and
+            lock-screen controls. [Get it on Google Play](https://play.google.com/store/apps/details?id=com.musian.app)
           files: ${{ steps.version.outputs.artifact }}
           fail_on_unmatched_files: true
 
@@ -133,7 +132,8 @@ jobs:
             --version   "${{ needs.build.outputs.version }}" \
             --tag       "${{ needs.build.outputs.tag }}" \
             --checksum  "${{ needs.build.outputs.checksum }}" \
-            --timestamp "${{ steps.meta.outputs.timestamp }}"
+            --timestamp "${{ steps.meta.outputs.timestamp }}" \
+            --changelog "Free and fully featured in Jellyfin. Also on Android, with Android Auto, background playback and lock-screen controls: [Get Musian on Google Play](https://play.google.com/store/apps/details?id=com.musian.app)"
 
       - name: Commit & push manifest
         run: |
