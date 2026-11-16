@@ -3,18 +3,18 @@
     "category": "Music",
     "guid": "6c8a80b7-3e2f-4d5a-9b1c-f7e8d9a0b2c3",
     "name": "Musian",
-    "description": "Play music from your Jellyfin library by selecting a mood on a visual emotion wheel (Valence\u2013Arousal model).",
-    "overview": "Click anywhere on the colour wheel to match music to how you feel. The wheel maps High/Low energy on the vertical axis and Positive/Negative mood on the horizontal axis.",
+    "description": "Play music from your Jellyfin library by tapping a mood on a colour wheel. Free and fully featured. The Android app adds Android Auto, background playback and lock-screen controls: https://play.google.com/store/apps/details?id=com.musian.app",
+    "overview": "Tap anywhere on the wheel: energy runs top to bottom, positivity left to right, and Musian queues tracks from your library that match. No retagging, no cloud account, no analytics. Tested on Jellyfin 12.4.",
     "owner": "ciantm",
     "imageUrl": "https://raw.githubusercontent.com/ciantm/jellyfin-plugin-musian/main/assets/logo.png",
     "versions": [
       {
         "version": "3.2.9",
         "changelog": "Free and fully featured in Jellyfin. Also on Android, with Android Auto, background playback and lock-screen controls: [Get Musian on Google Play](https://play.google.com/store/apps/details?id=com.musian.app)",
-        "targetAbi": "10.8.0.0",
+        "targetAbi": "10.9.0.0",
         "sourceUrl": "https://github.com/ciantm/jellyfin-plugin-musian/releases/download/v3.2.9/Jellyfin.Plugin.Musian_3.2.9.zip",
-        "checksum": "73282dc159837b5a0bb8a769b5c65da0",
-        "timestamp": "2026-11-16T11:04:44Z"
+        "checksum": "30f3c815fa2409a8beb89c04f9dcfb16",
+        "timestamp": "2026-11-16T11:07:54Z"
       },
       {
         "version": "3.2.8",
