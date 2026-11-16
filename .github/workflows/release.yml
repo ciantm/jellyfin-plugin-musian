@@ -116,6 +116,16 @@ jobs:
           ref: gh-pages
           fetch-depth: 0
 
+      # The checkout above replaces the workspace with the gh-pages branch, which
+      # ships its own (stale) copy of update_manifest.py. Without this step the
+      # script from main is never the one that runs, so changes to the catalogue
+      # description or targetAbi silently do nothing.
+      - name: Use update_manifest.py from main
+        run: |
+          git fetch --depth=1 origin main
+          git show FETCH_HEAD:update_manifest.py > update_manifest.py
+          grep -n "TARGET_ABI" update_manifest.py
+
       - name: Download build artifact
         uses: actions/download-artifact@v4
         with:
