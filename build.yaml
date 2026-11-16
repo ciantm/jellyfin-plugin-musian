@@ -7,3 +7,6 @@ artifactDir: "artifacts"
 
 projects:
   - Jellyfin.Plugin.Musian/Jellyfin.Plugin.Musian.csproj
+
+# Any change to this file triggers the Build & Release workflow. Version bumps
+# are the normal reason; this line exists so a workflow fix can re-run it.
