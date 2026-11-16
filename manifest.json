@@ -9,6 +9,14 @@
     "imageUrl": "https://raw.githubusercontent.com/ciantm/jellyfin-plugin-musian/main/assets/logo.png",
     "versions": [
       {
+        "version": "3.2.9",
+        "changelog": "Free and fully featured in Jellyfin. Also on Android, with Android Auto, background playback and lock-screen controls: [Get Musian on Google Play](https://play.google.com/store/apps/details?id=com.musian.app)",
+        "targetAbi": "10.8.0.0",
+        "sourceUrl": "https://github.com/ciantm/jellyfin-plugin-musian/releases/download/v3.2.9/Jellyfin.Plugin.Musian_3.2.9.zip",
+        "checksum": "73282dc159837b5a0bb8a769b5c65da0",
+        "timestamp": "2026-11-16T11:04:44Z"
+      },
+      {
         "version": "3.2.8",
         "changelog": "Release 3.2.8",
         "targetAbi": "10.8.0.0",
