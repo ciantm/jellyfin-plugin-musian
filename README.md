@@ -6,6 +6,12 @@ Musian is a Jellyfin plugin that adds a mood music player to your server. Instea
 
 It is a third-party plugin: add the repository URL below, it is not in the official Jellyfin catalogue.
 
+<p align="center">
+  <img src="assets/screenshot-wheel.png" width="300" alt="The Musian mood wheel, with four moods at the corners">
+  <img src="assets/screenshot-playing.png" width="300" alt="Musian playing a track with a 25-track queue">
+</p>
+
+
 ## Install
 
 1. Open Jellyfin -> **Dashboard -> Plugins -> Repositories**
