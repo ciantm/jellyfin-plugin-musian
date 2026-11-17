@@ -47,6 +47,10 @@ Mood matching reads the genre and mood tags in your files. A well-tagged library
 
 Made for people who host their own music.
 
+## What the page stores
+
+The plugin page keeps your server address and access token in your browser's storage for that Jellyfin address. For Plex and Subsonic it stores the token those servers issue, and for Subsonic the account password, because Subsonic hashes it on every request. Nothing is sent anywhere except your own server.
+
 ## Requirements
 
 - Jellyfin **10.9** or later (tested on 12.4)

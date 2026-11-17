@@ -37,7 +37,7 @@ public class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages
 
     /// <inheritdoc />
     public override string Description =>
-        "Play music from your Jellyfin library based on mood selection using a visual emotion wheel.";
+        "Your music, without the scrolling. A mood music player for your Jellyfin server.";
 
     /// <inheritdoc />
     public IEnumerable<PluginPageInfo> GetPages()

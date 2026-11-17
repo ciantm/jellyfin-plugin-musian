@@ -19,8 +19,8 @@ cat > manifest.json << 'MANIFEST'
     "category": "Music",
     "guid": "6c8a80b7-3e2f-4d5a-9b1c-f7e8d9a0b2c3",
     "name": "Musian",
-    "description": "Play music from your Jellyfin library by selecting a mood on a visual emotion wheel (Valence–Arousal model).",
-    "overview": "Click anywhere on the colour wheel to match music to how you feel. The wheel maps High/Low energy on the vertical axis and Positive/Negative mood on the horizontal axis.",
+    "description": "Your music, without the scrolling. Musian adds a mood music player to your Jellyfin server: tap the colour wheel and it plays tracks that match, chosen from the genre and mood tags in your files. Free. Android app with background playback and Android Auto: https://play.google.com/store/apps/details?id=com.musian.app",
+    "overview": "Up is high energy, down is low. Right is positive, left is negative. The corners are Angry and Tense, Happy and Excited, Sad and Lonely, Calm and Serene. Tap near an edge and the genres blend.",
     "owner": "ciantm",
     "imageUrl": "https://raw.githubusercontent.com/ciantm/jellyfin-plugin-musian/main/assets/logo.png",
     "versions": []
