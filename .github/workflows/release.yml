@@ -143,7 +143,7 @@ jobs:
             --tag       "${{ needs.build.outputs.tag }}" \
             --checksum  "${{ needs.build.outputs.checksum }}" \
             --timestamp "${{ steps.meta.outputs.timestamp }}" \
-            --changelog "Free and fully featured in Jellyfin. Also on Android, with Android Auto, background playback and lock-screen controls: [Get Musian on Google Play](https://play.google.com/store/apps/details?id=com.musian.app)"
+            --changelog "Your music, without the scrolling. Also on Android, with background playback, lock-screen controls and Android Auto: [Get Musian on Google Play](https://play.google.com/store/apps/details?id=com.musian.app)"
 
       - name: Commit & push manifest
         run: |

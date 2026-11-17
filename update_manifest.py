@@ -21,15 +21,16 @@ MANIFEST_FILE      = "manifest.json"
 # fresh manifest: the live text lives in the gh-pages manifest.json, so editing
 # only the bootstrap block below would change nothing for existing repositories.
 DESCRIPTION = (
-    "Play music from your Jellyfin library by tapping a mood on a colour wheel. "
-    "Free and fully featured. The Android app adds Android Auto, background "
-    "playback and lock-screen controls: "
+    "Your music, without the scrolling. Musian adds a mood music player to your "
+    "Jellyfin server: tap the colour wheel and it plays tracks that match, chosen "
+    "from the genre and mood tags in your files. Free. Android app with background "
+    "playback and Android Auto: "
     "https://play.google.com/store/apps/details?id=com.musian.app"
 )
 OVERVIEW = (
-    "Tap anywhere on the wheel: energy runs top to bottom, positivity left to "
-    "right, and Musian queues tracks from your library that match. No retagging, "
-    "no cloud account, no analytics. Tested on Jellyfin 12.4."
+    "Up is high energy, down is low. Right is positive, left is negative. The "
+    "corners are Angry and Tense, Happy and Excited, Sad and Lonely, Calm and "
+    "Serene. Tap near an edge and the genres blend."
 )
 
 BASE_URL = f"https://github.com/{REPO_OWNER}/{REPO_NAME}/releases/download"
