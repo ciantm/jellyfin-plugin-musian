@@ -1,92 +1,56 @@
-# 🎵 Musian
+# Musian
 
-A community Jellyfin plugin that turns your music library into a mood wheel: tap a feeling, get tracks.
+Your music, without the scrolling.
 
-This is a third-party plugin. Add the repository URL below; it is not in the official Jellyfin catalogue.
+Musian is a Jellyfin plugin that adds a mood music player to your server. Instead of picking albums or building playlists, tap the colour wheel and it plays tracks that match, chosen from the genre and mood tags in your files.
 
----
+It is a third-party plugin: add the repository URL below, it is not in the official Jellyfin catalogue.
 
-## Install via Plugin Repository (recommended)
+## Install
 
-1. Open Jellyfin → **Dashboard → Plugins → Repositories**
+1. Open Jellyfin -> **Dashboard -> Plugins -> Repositories**
 2. Click **+** and add this URL:
    ```
    https://ciantm.github.io/jellyfin-plugin-musian/manifest.json
    ```
 3. Go to **Catalogue**, search for **Musian**, and install
 4. Restart Jellyfin
-5. **Musian** will appear in the sidebar for all users
+5. Musian appears in the sidebar for every user of the server
 
----
+## How the wheel works
 
-## 📱 Also on Android
+Up is high energy, down is low. Right is positive, left is negative. The corners are four moods: Angry and Tense, Happy and Excited, Sad and Lonely, Calm and Serene. Tap near an edge and the genres blend with the neighbouring mood.
 
-The Musian Android app plays the same wheel from your phone, with background playback,
-lock-screen controls and Android Auto. The plugin stays free and fully featured; the app
-is an optional paid upgrade.
+## What you get
+
+- Mood wheel: tap a mood, get a queue
+- Plays through the Jellyfin player you already use, in the browser and in Jellyfin's mobile apps
+- Genre and era filters to narrow a mood
+- No account, no analytics, no ads
+- Nothing is written to your library, files or tags
+
+## Free
+
+The plugin is free and fully featured. The separate Android app adds background playback, lock-screen controls and Android Auto, and is an optional paid upgrade.
 
 [Get Musian on Google Play](https://play.google.com/store/apps/details?id=com.musian.app)
 
----
+## Good to know
 
-## How it works
+Mood matching reads the genre and mood tags in your files. A well-tagged library matches better than a sparse one.
 
-Click anywhere on the circular mood wheel — your position maps to two emotional axes:
-
-| Axis | Direction |
-|------|-----------|
-| **Valence** (positive/negative) | ← negative · positive → |
-| **Arousal** (energy level) | ↓ passive · active ↑ |
-
-**Quadrant moods:**
-
-| Quadrant | Mood | Default genres |
-|----------|------|----------------|
-| 🔴 Top-left  | Angry / Tense     | Metal, Punk, Hard Rock, Industrial |
-| 🟡 Top-right | Happy / Excited   | Pop, Dance, Electronic, Funk, House |
-| 🔵 Bottom-left  | Sad / Melancholic | Blues, Soul, Folk, Indie |
-| 🟢 Bottom-right | Calm / Relaxed    | Jazz, Ambient, Classical, Acoustic |
-
-Clicking near edges blends genres from adjacent moods automatically.
-
----
+Made for people who host their own music.
 
 ## Requirements
 
 - Jellyfin **10.9** or later (tested on 12.4)
 - Audio tracks with **Genre** tags set in your library
-- .NET **8.0** SDK (only needed if building from source)
 
----
+## Development
 
-## Publishing a new release
+Publishing a release: bump `version:` in `build.yaml` and `Jellyfin.Plugin.Musian.csproj`, commit and push to `main`. The workflow builds the DLL, creates the release and updates `manifest.json` on GitHub Pages.
 
-Bump `version:` in `build.yaml`, then commit and push to `main`:
-
-```bash
-# edit build.yaml -> version: "3.1.93.0"
-git commit -am "release 3.1.93.0"
-git push origin main
-```
-
-The GitHub Actions workflow builds the DLL, creates the Release, and publishes
-the updated `manifest.json` to GitHub Pages automatically.
-
-> Keep the version in `build.yaml` and `Jellyfin.Plugin.Musian.csproj` in sync.
-
----
-
-## Submitting to the official Jellyfin Plugin Catalogue
-
-To get Musian listed without needing a manual repo URL:
-
-1. Ensure the repo is public with at least one release
-2. Open a PR at [jellyfin/jellyfin-plugin-repository](https://github.com/jellyfin/jellyfin-plugin-repository)
-3. Follow the review checklist in that repo
-
----
-
-## Build from source
+Build from source:
 
 ```bash
 git clone https://github.com/ciantm/jellyfin-plugin-musian.git
@@ -94,14 +58,8 @@ cd jellyfin-plugin-musian
 dotnet build Jellyfin.Plugin.Musian -c Release
 ```
 
-Copy the DLL to your Jellyfin plugins folder:
-
-- **Linux:** `~/.local/share/jellyfin/plugins/Musian_1.0.0.0/`
-- **Windows:** `%APPDATA%\Jellyfin\plugins\Musian_1.0.0.0\`
-- **Docker:** `/config/plugins/Musian_1.0.0.0/`
-
----
+Copy the DLL to your Jellyfin plugins folder (`/config/plugins/Musian_1.0.0.0/` in Docker, `~/.local/share/jellyfin/plugins/` on Linux).
 
 ## Licence
 
-MIT — see [LICENSE](LICENSE).
+MIT, see [LICENSE](LICENSE).
