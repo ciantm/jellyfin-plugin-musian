@@ -1,9 +1,5 @@
 #!/usr/bin/env python3
-"""
-update_manifest.py  —  run from the gh-pages branch root.
-Inserts a new version entry into manifest.json, keeping the list
-sorted newest-first so Jellyfin always picks the latest version.
-"""
+"""Add a version entry to manifest.json, sorted newest first."""
 
 import argparse
 import json
@@ -14,12 +10,11 @@ PLUGIN_GUID        = "6c8a80b7-3e2f-4d5a-9b1c-f7e8d9a0b2c3"
 REPO_OWNER         = "ciantm"
 REPO_NAME          = "jellyfin-plugin-musian"
 PLUGIN_NAME        = "Musian"
-TARGET_ABI         = "10.9.0.0"   # minimum Jellyfin version required
+TARGET_ABI         = "10.9.0.0"   # minimum Jellyfin version
 MANIFEST_FILE      = "manifest.json"
 
-# Catalogue copy. These are written on every run, not just when bootstrapping a
-# fresh manifest: the live text lives in the gh-pages manifest.json, so editing
-# only the bootstrap block below would change nothing for existing repositories.
+# Written on every run: the live text lives in the gh-pages manifest, so
+# editing only the bootstrap block below would not update existing repositories.
 DESCRIPTION = (
     "Your music, without the scrolling. Musian adds a mood music player to your "
     "Jellyfin server: tap the colour wheel and it plays tracks that match, chosen "

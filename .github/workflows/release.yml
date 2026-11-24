@@ -64,16 +64,11 @@ jobs:
       - name: Create GitHub Release
         uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2
         with:
-          # Explicit token: the action otherwise has to discover it, and the
-          # "finalize release" call has been seen to fail with `HttpError:
-          # Server Error` / "Too many retries" right after the release is
-          # created — which then skips the manifest job below even though the
-          # release and its asset exist. Passing the token directly avoids the
-          # discovery step.
+          # Pass the token directly; token discovery can fail with a transient
+          # HttpError and then skip the manifest job.
           token: ${{ secrets.GITHUB_TOKEN }}
           tag_name: ${{ steps.version.outputs.tag }}
           name: Musian ${{ steps.version.outputs.version }}
-          # Never leave a half-finished release behind on a retry.
           draft: false
           make_latest: true
           body: |
@@ -93,7 +88,7 @@ jobs:
 
             ---
 
-            📱 **On your phone:** Musian for Android adds Android Auto, background playback and
+            **On your phone:** Musian for Android adds Android Auto, background playback and
             lock-screen controls. [Get it on Google Play](https://play.google.com/store/apps/details?id=com.musian.app)
           files: ${{ steps.version.outputs.artifact }}
           fail_on_unmatched_files: true
@@ -116,10 +111,7 @@ jobs:
           ref: gh-pages
           fetch-depth: 0
 
-      # The checkout above replaces the workspace with the gh-pages branch, which
-      # ships its own (stale) copy of update_manifest.py. Without this step the
-      # script from main is never the one that runs, so changes to the catalogue
-      # description or targetAbi silently do nothing.
+      # gh-pages ships an older copy of update_manifest.py; use the one from main.
       - name: Use update_manifest.py from main
         run: |
           git fetch --depth=1 origin main
@@ -153,15 +145,12 @@ jobs:
           git commit -m "chore: update manifest for ${{ needs.build.outputs.tag }}" || echo "No changes"
           git push
 
-      # Pages source is now "GitHub Actions" (switched 2026-08-06 after the legacy
-      # branch-deploy builder started failing outright — see git history for context).
-      # Committing manifest.json to gh-pages above is kept for history/audit trail,
-      # but no longer auto-publishes anything by itself; these steps do the actual deploy.
+      # Pages deploys from GitHub Actions. The gh-pages commit is kept as an
+      # audit trail; these steps publish the site.
       - name: Configure Pages
         uses: actions/configure-pages@983d7736d9b0ae728b81ab479565c72886d7745b # v5
         with:
-          # Creates the Pages site if it does not exist yet. Without this the
-          # deploy step fails on a freshly created repository.
+          # Create the Pages site on first run.
           enablement: true
 
       - name: Upload Pages artifact

@@ -9,7 +9,7 @@ using MediaBrowser.Model.Serialization;
 namespace Jellyfin.Plugin.Musian;
 
 /// <summary>
-/// Musian — play music from your library based on a visual mood wheel.
+/// Musian: a mood wheel player for a Jellyfin music library.
 /// </summary>
 public class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages
 {
@@ -25,11 +25,10 @@ public class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages
     /// <summary>Gets the singleton instance.</summary>
     public static Plugin? Instance { get; private set; }
 
-    /// <inheritdoc />
-    /// <remarks>
-    /// This GUID must never change — it is used by Jellyfin to identify the plugin
-    /// in the plugin repository and in saved configuration.
-    /// </remarks>
+    /// <summary>
+    /// Gets the plugin id. Jellyfin uses it to identify the plugin in the
+    /// repository and in saved configuration, so it must not change.
+    /// </summary>
     public override Guid Id => Guid.Parse("6c8a80b7-3e2f-4d5a-9b1c-f7e8d9a0b2c3");
 
     /// <inheritdoc />
@@ -45,17 +44,14 @@ public class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages
         var ns = GetType().Namespace;
         return
         [
-            // ── Main mood-picker page (visible to all users in the sidebar) ──
             new PluginPageInfo
             {
-                // Page name must be lowercase, no spaces — used in the URL:
-                // /web/index.html#!/configurationpage?name=musian
-                Name                 = "musian",
-                DisplayName          = "Musian",
+                Name = "musian",
+                DisplayName = "Musian",
                 EmbeddedResourcePath = $"{ns}.Configuration.moodPicker.html",
-                EnableInMainMenu     = true,   // shows in sidebar for ALL users
-                MenuIcon             = "music_note",
-                MenuSection          = "",
+                EnableInMainMenu = true,
+                MenuIcon = "music_note",
+                MenuSection = "",
             },
         ];
     }

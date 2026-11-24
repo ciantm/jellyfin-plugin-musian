@@ -6,7 +6,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace Jellyfin.Plugin.Musian.Api;
 
 /// <summary>
-/// Serves the Musian standalone app page.
+/// Serves the standalone Musian page.
 /// </summary>
 [ApiController]
 [Route("Musian")]
@@ -24,8 +24,7 @@ public class PageController : ControllerBase
     }
 
     /// <summary>
-    /// Serves the standalone Musian app page at /Musian/app.
-    /// No Jellyfin dashboard shell — clicks work.
+    /// Returns the app page at /Musian/app.
     /// </summary>
     [HttpGet("app")]
     [Produces("text/html")]
